@@ -1,0 +1,464 @@
+---
+title: "Sorriso"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(hrbrthemes)
+theme_set(theme_ipsum_rc())
+
+library(boot)
+library(broom)
+library(extrafont)
+
+
+theme_set(theme_bw())
+
+library(ggbeeswarm)
+library(gridExtra)
+
+library(moments)
+
+```
+
+```{r}
+dados = read_csv(here::here("data/leniency.csv"), 
+                 col_types = "cdc")
+
+glimpse(dados)
+```
+
+---
+
+L4P1: Exercícios com inferência
+
+---
+
+
+---
+
+Neste cenário, estamos estudando dados sobre como ver uma pessoa sorrindo muda o julgamento que temos dela. Os dados são de um experimento que mostrava para uma amostra de participantes 1 de quatro fotos, 3 das quais tem um sorriso e uma que não tem: 
+
+
+
+
+
+
+1) Ter a pessoa sorrindo na foto (independente do sorriso) causa uma mudança no julgamento das pessoas em geral? Quão relevante é essa mudança? 
+
+
+
+2)Como se comparam os efeitos dos diferentes sorrisos no julgamento das pessoas? 
+
+
+---
+
+
+---
+
+Visualizações das informações
+
+---
+
+
+
+```{r}
+
+total_linhas = dados %>% count()
+
+
+dados_medias =  dados %>% 
+    group_by(smile) %>%
+    summarise(media_leniency = mean(leniency), 
+              .groups = "drop")
+
+dados_medias
+
+
+dados_variancia =  dados %>% 
+    group_by(smile) %>%
+    summarise(variancia_leniency = var(leniency), 
+              .groups = "drop")
+
+dados_variancia
+
+
+dados_desvio_padrao =  dados %>% 
+    group_by(smile) %>%
+    summarise(desvio_padrao_leniency = sd(leniency), 
+              .groups = "drop")
+
+dados_desvio_padrao
+
+dados_coef_var =  dados %>% 
+    group_by(smile) %>%
+    summarise(coef_leniency = sd(leniency) / mean(leniency) * 100, 
+              .groups = "drop")
+
+dados_coef_var
+
+
+dados_max =  dados %>% 
+    group_by(smile) %>%
+    summarise(max_leniency = max(leniency), 
+              .groups = "drop")
+
+dados_max
+
+
+dados_max =  dados %>% 
+    group_by(smile) %>%
+    summarise(max_leniency = min(leniency), 
+              .groups = "drop")
+
+dados_min
+
+dados_assimetria =  dados %>% 
+    group_by(smile) %>%
+    summarise(assimetria_leniency = skewness(leniency), 
+              .groups = "drop")
+
+dados_assimetria
+
+
+
+
+#dados_medias
+#dados_variancia
+#dados_desvio_padrao
+#dados_coef_var 
+#dados_min
+#dados_max
+#dados_assimetria
+
+
+```
+
+---
+  
+  A média para "false smile" = 5.367647, "felt smile" = 4.911765, "miserable smile"  = 4.911765, no smile (control) = 4.117647.
+  
+  
+
+---  
+  
+```{r}
+dados_medias
+```
+  
+  
+---
+
+  Também foram calculados a variância, o desvio padrão e o coeficiente de variação para cada variável como medidas de dispersão. 
+
+
+---
+
+```{r}
+dados_variancia
+```
+
+```{r}
+dados_desvio_padrao
+```
+
+
+---
+ A variância do desvio padrão são as duas medidas de dispensão mais usudas. Neste caso, tanto o a variância quanto o desvio padrão indentificou um variabilidade na dispersão das variáveis em torno da média. Entretanto, como a variância quanto o desvio padrão dependem da escala assumida de cada variável, calculou-se o o coeficiente de variação para poder fazer uma análise comparada da varibilidade. o Coeficente de Variáção é um medida de varibilidade padronizada, ou seja, expressa percentualmente a avalição dos dados em relação a média. De acordo com os coeficinete de variação calculados para o agrupamento da latência para os 4 grupos para variável, pode-se dizer que a o grupo "miserable smile" mostrou-se menor concentrada relativamente aos demais grupos. Já o grupo "false smile" mostrou-se relativamente mais concentrada em torno da média do que a demais variáveis.
+
+
+---
+
+
+```{r}
+dados_coef_var 
+```
+
+
+
+```{r}
+
+
+p1 =    dados %>% 
+        filter(smile == "false smile") %>%
+        ggplot(aes(x = leniency)) +
+        geom_density(fill = "coral", color = 'black') +
+        geom_rug() +
+        geom_vline (xintercept = mean (dados$leniency), color = "red") +
+        geom_vline (xintercept = median (dados$leniency), color = "blue") +  
+        labs(
+              y = "", 
+              x = "false smile",
+              title = ""
+            )
+        
+        
+p2 =    dados %>% 
+        filter(smile == "felt smile") %>%
+        ggplot(aes(x = leniency)) +
+        geom_density(fill = "coral", color = 'black') +
+        geom_rug() +
+        geom_vline (xintercept = mean (dados$leniency), color = "red") +
+        geom_vline (xintercept = median (dados$leniency), color = "blue") + 
+        labs(
+              y = "", 
+              x = "felt smile",
+              title = ""
+            )
+        
+        
+p3 =    dados %>% 
+        filter(smile == "miserable smile") %>%
+        ggplot(aes(x = leniency)) +
+        geom_density(fill = "coral", color = 'black') +
+        geom_rug() +
+        geom_vline (xintercept = mean (dados$leniency), color = "red") +
+        geom_vline (xintercept = median (dados$leniency), color = "blue") + 
+        labs(
+              y = "", 
+              x = "miserable smile",
+              title = ""
+            )
+
+p4 =    dados %>% 
+        filter(smile == "no smile (control)") %>%
+        ggplot(aes(x = leniency)) +
+        geom_density(fill = "coral", color = 'black') +
+        geom_rug() +
+        geom_vline (xintercept = mean (dados$leniency), color = "red") +
+        geom_vline (xintercept = median (dados$leniency), color = "blue")+  
+        labs(
+              y = "", 
+              x = "no smile (control)",
+              title = ""
+            )
+
+grid.arrange(p1, p2, p3, p4, ncol = 4)
+
+
+
+```
+
+
+```{r}
+  p1 =  dados %>% 
+        ggplot(aes(x = math_SAT)) +
+        geom_density(fill = "coral", color = 'black') +
+        geom_rug() +
+        geom_vline (xintercept = mean (dados$math_SAT), color = "red") +
+        geom_vline (xintercept = median (dados$math_SAT), color = "blue")   
+ 
+  p2 =  dados %>% 
+        ggplot(aes(x = verb_SAT)) +
+        geom_density(fill = "coral", color = 'black') +
+        geom_rug() +
+        geom_vline (xintercept = mean (dados$verb_SAT), color = "red") +
+        geom_vline (xintercept = median (dados$verb_SAT), color = "blue")     
+
+  p3 =  dados %>% 
+        ggplot(aes(x = comp_GPA)) +
+        geom_density(fill = "coral", color = 'black') +
+        geom_rug() +
+        geom_vline (xintercept = mean (dados$comp_GPA), color = "red") +
+        geom_vline (xintercept = median (dados$comp_GPA), color = "blue") 
+      
+  grid.arrange(p1, p2, p3, ncol = 3)    
+
+```
+
+---
+ 
+ Há basicamente três tipos de assimetria: 
+ a) assimetria à direita - ocorre quando a moda > mediana > média (a cauda a direita)
+ b) assimetria à esquerda  - ocorre quando média < mediana <  moda (a cauda a esquerda)
+ c) simetrico - ocorre quando média = mediana =  moda 
+ 
+ 
+ A medidas de posição (média) podem ser influenciada pelo grau de simetria da distribuição dos dados amostrais. Isso pode ocorrer devido à existência de valores discrepantes (outlines) que podem influenciar o valor da média. Uma forma de ter uma idéia da assimetria é comparando as medidas de posição acima mencionadas. No gráfico de densidade para cada variável, é possível observar os valores da média (linha em vermelho) e mediana (linha em azul). A partir do gráfico de densidade, pode-se dizer que a densidade de probabilidade para todos grupos  indicam ter distribuição assimétrica à direita ou positiva. Esses resultados para a simetria é confirmado pelo cálculo direto da medidad de assimetria para cada variável descrito abaixo.
+ 
+---
+
+```{r}
+   dados_assimetria
+```
+
+
+---
+**Curtose**
+
+A curtose é uma medida de dispersão que caracteriza o "achatamento" da curva da função de distribuição. Quanto maior for a dispersão dos dados em torno da média, ou seja, quanto maior o desvio padrão a função de distribuição é mais "achatada". O contrário também vale, quanto menor o desvio padrão mais ponteaguda é o formato da função de distribuição de probabilidade. Na ausência de uma medida da curtose, pode-se ter uma indicação do formato relativo das curvas de distribuição das probabilidades. E o desvio padrão comp_GPA é menor que as outras. Portanto, observavou-se que o desvio padrão dos grupos, isto pode que o formato da curva de distribuição dos grupos parece ser relatavidamente mais achatada.
+
+
+---
+
+<!--
+1) Ter a pessoa sorrindo na foto (independente do sorriso) causa uma mudança no)  julgamento das pessoas em geral? Quão relevante é essa mudança? 
+
+2)Como se comparam os efeitos dos diferentes sorrisos no julgamento das pessoas? 
+
+-->
+
+
+
+
+
+---
+
+
+---
+
+<!-- Como se comparam entre si as correlações dos dois critérios do SAT com o desempenho nas matérias de Computação? -->
+
+```{r}
+  correlacao_math_SAT_comp_GPA = dados %>%
+    summarise(correlacao = cor(math_SAT, comp_GPA, method = "pearson"))%>%
+    pull(correlacao)
+
+  dados %>% 
+      ggplot(aes(x = math_SAT, y = verb_SAT)) + 
+      geom_point(alpha = .4, color = "green") +
+      geom_vline (xintercept = mean (dados$math_SAT), color = "red") +
+      geom_hline (yintercept = mean (dados$verb_SAT), color = "red") +
+      geom_smooth(method=lm, se=FALSE) +
+      annotate(geom = "text", x = 525, y = 720, label = paste("r = ", round(correlacao_math_SAT_comp_GPA, 3)))
+
+```
+
+
+
+```{r}
+
+p1 = dados %>% 
+      ggplot(aes(x = math_SAT,  y = after_stat(density))) + 
+      geom_histogram(fill = "steelblue",  color = "black", alpha = .5) + 
+      labs(
+          y = "Porporção de math_SAT", 
+          x = "",
+          title = "Distribuição da math_SAT"
+          )
+
+p2 = dados %>% 
+      ggplot(aes(x = verb_SAT,  y = after_stat(density))) + 
+      geom_histogram(fill = "steelblue",  color = "black", alpha = .5) + 
+      labs(
+        y = "Porporção de verb_SAT", 
+        x = "",
+        title = "Distribuição da verb_SAT"
+      )
+
+grid.arrange(p1, p2, ncol = 2)
+
+```   
+
+---
+ 
+ A amostra da distribuição mat_SATH indica maior concetração 
+
+---
+
+
+
+```{r}
+
+
+comparacao = dados_finais 
+
+comparacao %>% 
+    #filter(materia_SAT == "math_SAT") %>%
+    ggplot(aes(x = nota_SAT, y = materia_SAT)) + 
+    geom_quasirandom(width = .1) +
+    stat_summary(geom = "point", fun = "mean", color = "red", size = 5) 
+    
+
+```
+
+
+
+##### Qual a diferença na amostra
+
+```{r}
+comparacao1 = dados_finais   
+        agrupado = comparacao1 %>% 
+        group_by(materia_SAT) %>% 
+        summarise(media1 = mean(nota_SAT))
+
+agrupado
+```
+
+
+```{r}
+library(boot)
+comparacao1 = dados_finais
+
+
+
+theta <- function(d, i) {
+    agrupado = d %>% 
+        slice(i) %>% 
+        group_by(materia_SAT) %>% 
+        summarise(media = mean(nota_SAT))
+
+
+
+    
+    b = agrupado %>% filter(materia_SAT == "math_SAT") %>% pull(media)
+    l = agrupado %>% filter(materia_SAT == "verb_SAT") %>% pull(media)
+    b - l
+}
+
+theta(comparacao1, i = 1:NROW(comparacao1))
+```
+```{r}
+ci1 = boot(data = comparacao1,
+           statistic = theta,
+           R = 2000) %>%
+    tidy(conf.level = .95,
+         conf.method = "bca",
+         conf.int = TRUE)
+
+ci1
+```
+
+
+
+```{r}
+
+ci1 %>%
+    ggplot(aes(
+        x = "",
+        y = statistic,
+        ymin = conf.low,
+        ymax = conf.high
+    )) +
+    geom_pointrange() +
+    geom_point(size = 3) + 
+    ylim(-100, 100) + 
+    labs(x = "Diferença", 
+         y = "math_SAT - verb_SAT")
+
+
+```
+
+---
+
+Para amostra foi utilizado as médias de math_SAT - verb_SAT, com isto, para a realização do desempenho às matérias  entre math_SAT e verb_SAT observou-se que o resultado a confiança de 95%, em que apontam para um intervalos com conf.low = 8.456478 e 39.20849, podendo ser com pouco efeito sendo pequeno positiva diferença para math_SAT.
+
+
+
+
+---
+
+
+
+
+
+
+
+
+
+
+

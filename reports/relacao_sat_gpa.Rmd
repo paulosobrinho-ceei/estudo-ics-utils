@@ -1,0 +1,450 @@
+---
+title: "Relação entre SAT e GPA"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(hrbrthemes)
+theme_set(theme_ipsum_rc())
+
+library(boot)
+library(broom)
+library(extrafont)
+
+
+theme_set(theme_bw())
+
+library(ggbeeswarm)
+library(gridExtra)
+
+library(moments)
+
+```
+
+
+
+```{r}
+dados = read_csv(here::here("data/sat-gpa.csv"), 
+                 col_types = "dddd")
+
+glimpse(dados)
+```
+
+
+---
+
+L4P1: Exercícios com inferência
+
+---
+
+
+---
+
+1: Relação entre SAT e GPA
+Nesse cenário, usaremos dados de resultados de duas avaliações feitas em alunos que se formaram em Computação em uma universidade pública americana. O primeiro é o SAT: "The SAT exam is a standardized test that most U.S. colleges use to determine whether students should be accepted into the institution."  e nossos dados tem a nota em matemática (math_SAT) e expressão verbal (verb_SAT) no SAT dos estudantes. A segunda nota disponível é a GPA dos alunos, que você pode interpretar como um agregado do desempenho deles no curso. Temos o GPA deles para as matérias de computação (comp_GPA) e no geral (univ_GPA).
+Temos os dados de uma amostra de alunos de computação a partir da qual queremos generalizar afirmações para alunos de Computação em geral (ao menos dessa universidade). Nossas perguntas são: 
+Como é a correlação entre o desempenho dos alunos em cada uma das dimensões do SAT (verbal e matemática) e seu desempenho nas matérias de computação do curso? 
+Como se comparam entre si as correlações dos dois critérios do SAT com o desempenho nas matérias de Computação? Um dos critérios é claramente mais correlacionado com o desempenho nas matérias de computação que o outro? Os resultados apontam que essa diferença é grande? Pequena? 
+O dados estão aqui. Esse notebook tem código que pode lhe ajudar. Faça clone do repositório e experimente com ele. As visualizações de ICs dele são um bom modelo para lhe inspirar.
+
+
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+
+
+1: Relação entre SAT e GPA
+Nesse cenário, usaremos dados de resultados de duas avaliações feitas em alunos que se formaram em Computação em uma universidade pública americana. O primeiro é o SAT: "O exame SAT é um teste padronizado que a maioria das faculdades dos EUA usa para determinar se os alunos devem ser aceitos na instituição."  e nossos dados tem a nota em matemática (math_SAT) e expressão verbal (verb_SAT) no SAT dos estudantes. A segunda nota disponível é a GPA dos alunos, que você pode interpretar como um agregado do desempenho deles no curso. Temos o GPA deles para as matérias de computação (comp_GPA) e no geral (univ_GPA).
+Temos os dados de uma amostra de alunos de computação a partir da qual queremos generalizar afirmações para alunos de Computação em geral (ao menos dessa universidade). Nossas perguntas são: 
+Como é a correlação entre o desempenho dos alunos em cada uma das dimensões do SAT (verbal e matemática) e seu desempenho nas matérias de computação do curso? 
+Como se comparam entre si as correlações dos dois critérios do SAT com o desempenho nas matérias de Computação? Um dos critérios é claramente mais correlacionado com o desempenho nas matérias de computação que o outro? Os resultados apontam que essa diferença é grande? Pequena? 
+O dados estão aqui. Esse notebook tem código que pode lhe ajudar. Faça clone do repositório e experimente com ele. As visualizações de ICs dele são um bom modelo para lhe inspirar.
+
+
+---
+
+
+
+
+```{r}
+dados_math = dados %>%
+  mutate (materia_SAT = "math_SAT", nota_SAT = math_SAT, computacao_GPA = comp_GPA)
+
+dados_verb = dados %>%
+  mutate (materia_SAT = "verb_SAT", nota_SAT = verb_SAT, computacao_GPA = comp_GPA)
+
+
+dados_finais = bind_rows (dados_math, dados_verb) %>% 
+  select(materia_SAT, nota_SAT, computacao_GPA)
+  
+```
+
+
+```{r}
+#dados %>%
+#  select(math_SAT, verb_SAT) %>%
+#  pivot_longer(c(math_SAT, verb_SAT))
+```
+
+
+---
+
+Visualizações das informações
+
+---
+
+
+
+```{r}
+
+total_linhas = dados %>% count()
+
+dados_medias =  dados %>% 
+    summarise(media_math_SAT = mean(math_SAT), 
+              media_verb_SAT = mean(verb_SAT), 
+              media_comp_GPA = mean(comp_GPA), 
+              .groups = "drop")
+
+dados_variancia =  dados %>% 
+    summarise(variancia_math_SAT = var(math_SAT), 
+              variancia_verb_SAT = var(verb_SAT), 
+              variancia_comp_GPA = var(comp_GPA), 
+              .groups = "drop")
+
+dados_desvio_padrao =  dados %>% 
+    summarise(desvio_padrao_math_SAT = sd(math_SAT), 
+              desvio_padrao_verb_SAT = sd(verb_SAT), 
+              desvio_padrao_comp_GPA = 
+              sd(comp_GPA), .groups = "drop")
+
+dados_coef_var =  dados %>% 
+    summarise(coef_var_math_SAT = sd(math_SAT) / mean(math_SAT) * 100,
+              coef_var_verb_SAT = sd(verb_SAT) / mean(verb_SAT) * 100, 
+              coef_var_comp_GPA = sd(comp_GPA)  / mean(comp_GPA) * 100,
+              .groups = "drop")
+
+
+dados_max = dados %>% 
+    summarise(max_math_SAT = max(math_SAT), 
+              max_verb_SAT = max(verb_SAT), 
+              max_comp_GPA = max(comp_GPA), 
+              .groups = "drop")
+
+dados_min = dados %>% 
+    summarise(min_math_SAT = min(math_SAT), 
+              min_verb_SAT = min(verb_SAT), 
+              min_comp_GPA = min(comp_GPA), 
+              .groups = "drop")
+
+dados_assimetria =  dados %>% 
+    summarise(assimetria_math_SAT = skewness(dados$math_SAT), 
+              assimetria_verb_SAT = skewness(dados$verb_SAT), 
+              assimetria_comp_GPA = skewness(dados$comp_GPA), 
+              .groups = "drop")
+
+#dados_medias
+#dados_variancia
+#dados_desvio_padrao
+#dados_coef_var 
+dados_min
+dados_max
+dados_assimetria
+
+```
+
+---
+  
+  A média para math_SAT foi igual a 623.0762. A méida para verb_SAT foi igual 598.6. E a média para comp_GPA foi de 3.128.
+  
+---  
+  
+```{r}
+dados_medias
+```
+  
+  
+---
+
+  Também foram calculados a variância, o desvio padrão e o coeficiente de variação para cada variável como medidas de dispersão. 
+
+
+---
+
+```{r}
+dados_variancia
+```
+
+```{r}
+dados_desvio_padrao
+```
+
+
+---
+
+ A variância do desvio padrão são as duas medidas de dispensão mais usudas. Neste caso, tanto o a variância quanto o desvio padrão indentificou um variabilidade na dispersão das variáveis em torno da média. Entretanto, como a variância quanto o desvio padrão dependem da escala assumida de cada variável, calculou-se o o coeficiente de variação para poder fazer uma análise comparada da varibilidade. o Coeficente de Variáção é um medida de varibilidade padronizada, ou seja, expressa percentualmente a avalição dos dados em relação a média. De acordo com os coeficinete de variação calculados para as três variáveis, pode-se dizer que a variável math_SAT mostrou-se menor concentrada relativamente às demais variáveis. Já a variável comp_GPA mostrou-se relativamente mais concentrada em torno da média do que a demais variáveis.
+
+
+---
+
+
+```{r}
+dados_coef_var 
+```
+
+
+```{r}
+  p1 =  dados %>% 
+        ggplot(aes(x = math_SAT)) +
+        geom_density(fill = "coral", color = 'black') +
+        geom_rug() +
+        geom_vline (xintercept = mean (dados$math_SAT), color = "red") +
+        geom_vline (xintercept = median (dados$math_SAT), color = "blue")   
+ 
+  p2 =  dados %>% 
+        ggplot(aes(x = verb_SAT)) +
+        geom_density(fill = "coral", color = 'black') +
+        geom_rug() +
+        geom_vline (xintercept = mean (dados$verb_SAT), color = "red") +
+        geom_vline (xintercept = median (dados$verb_SAT), color = "blue")     
+
+  p3 =  dados %>% 
+        ggplot(aes(x = comp_GPA)) +
+        geom_density(fill = "coral", color = 'black') +
+        geom_rug() +
+        geom_vline (xintercept = mean (dados$comp_GPA), color = "red") +
+        geom_vline (xintercept = median (dados$comp_GPA), color = "blue") 
+      
+  grid.arrange(p1, p2, p3, ncol = 3)    
+
+```
+
+---
+ 
+ Há basicamente três tipos de assimetria: 
+ a) assimetria à direita - ocorre quando a moda > mediana > média (a cauda a direita)
+ b) assimetria à esquerda  - ocorre quando média < mediana <  moda (a cauda a esquerda)
+ c) simetrico - ocorre quando média = mediana =  moda 
+ 
+ 
+ A medidas de posição (média) podem ser influenciada pelo grau de simetria da distribuição dos dados amostrais. Isso pode ocorrer devido à existência de valores discrepantes (outlines) que podem influenciar o valor da média. Uma forma de ter uma idéia da assimetria é comparando as medidas de posição acima mencionadas. No gráfico de densidade para cada variável, é possível observar os valores da média (linha em vermelho) e mediana (linha em azul). A partir do gráfico de densidade, pode-se dizer que a densidade de probabilidade das váriaveis math_SAT e verb_SAT indicam ter distribuição assimétrica à direita ou positiva. Já a a variável comp_GPA mostra-se ter densidade de probabilidade assimêstrica à esquerda ou negativa. Esses resultados para a simetria é confirmado pelo cálculo direto da medidad de assimetria para cada variável descrito abaixo.
+ 
+---
+
+```{r}
+   dados_assimetria
+```
+
+
+---
+
+**Curtose**
+
+A curtose é uma medida de dispersão que caracteriza o "achatamento" da curva da função de distribuição. Quanto maior for a dispersão dos dados em torno da média, ou seja, quanto maior o desvio padrão a função de distribuição é mais "achatada". O contrário também vale, quanto menor o desvio padrão mais ponteaguda é o formato da função de distribuição de probabilidade. Na ausência de uma medida da curtose, pode-se ter uma indicação do formato relativo das curvas de distribuição das probabilidades. Observavou-se que o desvio padrão da variável verb_SAT é maior que o desvio padrão math_SAT. E o desvio padrão comp_GPA é menor que as outras. Portanto, isto pode que o formato da curva de distribuição de verb_SAT parece ser relatavidamente mais achatada.
+
+
+---
+
+<!--
+Como é a correlação entre o desempenho dos alunos em cada uma das dimensões do SAT (verbal e matemática) e seu desempenho nas matérias de computação do curso? 
+-->
+
+
+
+```{r}
+
+correlacao_math_SAT_comp_GPA = dados %>%
+    summarise(correlacao = cor(math_SAT, comp_GPA, method = "pearson"))%>%
+    pull(correlacao)
+
+correlacao_verb_SAT_comp_GPA = dados %>%
+    summarise(correlacao = cor(verb_SAT, comp_GPA, method = "pearson"))%>%
+    pull(correlacao)
+
+
+p1 = dados %>% 
+      ggplot(aes(x = math_SAT, y = comp_GPA)) + 
+      geom_point(alpha = .4, color = "green") +
+      geom_vline (xintercept = mean (dados$math_SAT), color = "red") +
+      geom_hline (yintercept = mean (dados$comp_GPA), color = "red") +
+      geom_smooth(method=lm, se=FALSE) +
+      annotate(geom = "text", x = 560, y = 3.9, label = paste("r = ", round(correlacao_math_SAT_comp_GPA, 3)))
+
+
+
+p2 = dados %>% 
+      ggplot(aes(x = verb_SAT, y = comp_GPA)) + 
+      geom_point(alpha = .4, color = "green") +
+      geom_vline (xintercept = mean (dados$verb_SAT), color = "red") +
+      geom_hline (yintercept = mean (dados$comp_GPA), color = "red") +
+      geom_smooth(method=lm, se=FALSE) +
+      annotate(geom = "text", x = 530, y = 3.9, label = paste("r = ", round(correlacao_verb_SAT_comp_GPA, 3)))
+  
+
+
+grid.arrange(p1, p2, ncol = 2)
+```
+
+
+
+---
+
+1) Para medir para medir a correlação linear entre duas variáveis, utilizou-se utilizou-se o coeficiente de pearson.  O coeficiente de Pearson para as variáveis math_SAT e comp_GPA foi igual a 0,688. Isso indica que há uma relação linear direta e forte entre essas variáveis. O coeficiente de Pearson para as variáveis verb_SAT e comp_GPA foi igual a 0,639. 
+
+
+2) Isso também está indicando que há uma relação linear direta e forte entre essas duas últimas variáveis. O Coeficiente é um número que varia entre -1 e +1, quanto mais próximo de 1 ou -1, indica que há uma correlação forte seja negativa ou positiva. Quanto mais próximo de 0 indica uma correlação fraca entre duas variáveis. Portanto, pode-se infererir que math_SAT é mais correlacionado com comp_GPA do que verb_SAT relativo a comp_GPA. Entretanto os valores estimados dos coeficiente de relação não se diferenciam muito. 
+
+---
+
+<!-- Como se comparam entre si as correlações dos dois critérios do SAT com o desempenho nas matérias de Computação? -->
+
+```{r}
+  correlacao_math_SAT_comp_GPA = dados %>%
+    summarise(correlacao = cor(math_SAT, comp_GPA, method = "pearson"))%>%
+    pull(correlacao)
+
+  dados %>% 
+      ggplot(aes(x = math_SAT, y = verb_SAT)) + 
+      geom_point(alpha = .4, color = "green") +
+      geom_vline (xintercept = mean (dados$math_SAT), color = "red") +
+      geom_hline (yintercept = mean (dados$verb_SAT), color = "red") +
+      geom_smooth(method=lm, se=FALSE) +
+      annotate(geom = "text", x = 525, y = 720, label = paste("r = ", round(correlacao_math_SAT_comp_GPA, 3)))
+
+```
+
+
+
+```{r}
+
+p1 = dados %>% 
+      ggplot(aes(x = math_SAT,  y = after_stat(density))) + 
+      geom_histogram(fill = "steelblue",  color = "black", alpha = .5) + 
+      labs(
+          y = "Porporção de math_SAT", 
+          x = "",
+          title = "Distribuição da math_SAT"
+          )
+
+p2 = dados %>% 
+      ggplot(aes(x = verb_SAT,  y = after_stat(density))) + 
+      geom_histogram(fill = "steelblue",  color = "black", alpha = .5) + 
+      labs(
+        y = "Porporção de verb_SAT", 
+        x = "",
+        title = "Distribuição da verb_SAT"
+      )
+
+grid.arrange(p1, p2, ncol = 2)
+
+```   
+
+---
+ 
+ A amostra da distribuição mat_SATH indica maior concetração 
+
+---
+
+
+
+```{r}
+
+
+comparacao = dados_finais 
+
+comparacao %>% 
+    #filter(materia_SAT == "math_SAT") %>%
+    ggplot(aes(x = nota_SAT, y = materia_SAT)) + 
+    geom_quasirandom(width = .1) +
+    stat_summary(geom = "point", fun = "mean", color = "red", size = 5) 
+    
+
+```
+
+
+
+##### Qual a diferença na amostra
+
+```{r}
+comparacao1 = dados_finais   
+        agrupado = comparacao1 %>% 
+        group_by(materia_SAT) %>% 
+        summarise(media1 = mean(nota_SAT))
+
+agrupado
+```
+
+
+```{r}
+library(boot)
+comparacao1 = dados_finais
+
+
+
+theta <- function(d, i) {
+    agrupado = d %>% 
+        slice(i) %>% 
+        group_by(materia_SAT) %>% 
+        summarise(media = mean(nota_SAT))
+
+
+
+    
+    b = agrupado %>% filter(materia_SAT == "math_SAT") %>% pull(media)
+    l = agrupado %>% filter(materia_SAT == "verb_SAT") %>% pull(media)
+    b - l
+}
+
+theta(comparacao1, i = 1:NROW(comparacao1))
+```
+```{r}
+ci1 = boot(data = comparacao1,
+           statistic = theta,
+           R = 2000) %>%
+    tidy(conf.level = .95,
+         conf.method = "bca",
+         conf.int = TRUE)
+
+ci1
+```
+
+
+
+```{r}
+
+ci1 %>%
+    ggplot(aes(
+        x = "",
+        y = statistic,
+        ymin = conf.low,
+        ymax = conf.high
+    )) +
+    geom_pointrange() +
+    geom_point(size = 3) + 
+    ylim(-100, 100) + 
+    labs(x = "Diferença", 
+         y = "math_SAT - verb_SAT")
+
+
+```
+
+---
+
+Para amostra foi utilizado as médias de math_SAT - verb_SAT, com isto, para a realização do desempenho às matérias  entre math_SAT e verb_SAT observou-se que o resultado a confiança de 95%, em que apontam para um intervalos com conf.low = 8.456478 e 39.20849, podendo ser com pouco efeito sendo pequeno positiva diferença para math_SAT.
+
+
+
+
+---
+
+
+
+
+
+
+
+
+
+
+

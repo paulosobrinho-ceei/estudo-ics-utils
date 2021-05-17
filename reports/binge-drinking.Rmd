@@ -1,8 +1,6 @@
 ---
-title: "Relação entre SAT e GPA"
-output:
-  html_document:
-    df_print: paged
+title: "Binge drinking"
+output: html_notebook
 ---
 
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
@@ -15,49 +13,13 @@ library(boot)
 library(broom)
 ```
 
-
----
-
-L4P1: Exercícios com inferência
-
----
-
-
----
-
-1: Relação entre SAT e GPA
-Nesse cenário, usaremos dados de resultados de duas avaliações feitas em alunos que se formaram em Computação em uma universidade pública americana. O primeiro é o SAT: "The SAT exam is a standardized test that most U.S. colleges use to determine whether students should be accepted into the institution."  e nossos dados tem a nota em matemática (math_SAT) e expressão verbal (verb_SAT) no SAT dos estudantes. A segunda nota disponível é a GPA dos alunos, que você pode interpretar como um agregado do desempenho deles no curso. Temos o GPA deles para as matérias de computação (comp_GPA) e no geral (univ_GPA).
-Temos os dados de uma amostra de alunos de computação a partir da qual queremos generalizar afirmações para alunos de Computação em geral (ao menos dessa universidade). Nossas perguntas são: 
-Como é a correlação entre o desempenho dos alunos em cada uma das dimensões do SAT (verbal e matemática) e seu desempenho nas matérias de computação do curso? 
-Como se comparam entre si as correlações dos dois critérios do SAT com o desempenho nas matérias de Computação? Um dos critérios é claramente mais correlacionado com o desempenho nas matérias de computação que o outro? Os resultados apontam que essa diferença é grande? Pequena? 
-O dados estão aqui. Esse notebook tem código que pode lhe ajudar. Faça clone do repositório e experimente com ele. As visualizações de ICs dele são um bom modelo para lhe inspirar.
-
-
-kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
-
-
-1: Relação entre SAT e GPA
-Nesse cenário, usaremos dados de resultados de duas avaliações feitas em alunos que se formaram em Computação em uma universidade pública americana. O primeiro é o SAT: "O exame SAT é um teste padronizado que a maioria das faculdades dos EUA usa para determinar se os alunos devem ser aceitos na instituição."  e nossos dados tem a nota em matemática (math_SAT) e expressão verbal (verb_SAT) no SAT dos estudantes. A segunda nota disponível é a GPA dos alunos, que você pode interpretar como um agregado do desempenho deles no curso. Temos o GPA deles para as matérias de computação (comp_GPA) e no geral (univ_GPA).
-Temos os dados de uma amostra de alunos de computação a partir da qual queremos generalizar afirmações para alunos de Computação em geral (ao menos dessa universidade). Nossas perguntas são: 
-Como é a correlação entre o desempenho dos alunos em cada uma das dimensões do SAT (verbal e matemática) e seu desempenho nas matérias de computação do curso? 
-Como se comparam entre si as correlações dos dois critérios do SAT com o desempenho nas matérias de Computação? Um dos critérios é claramente mais correlacionado com o desempenho nas matérias de computação que o outro? Os resultados apontam que essa diferença é grande? Pequena? 
-O dados estão aqui. Esse notebook tem código que pode lhe ajudar. Faça clone do repositório e experimente com ele. As visualizações de ICs dele são um bom modelo para lhe inspirar.
-
-
----
-
 ```{r}
 binge = read_csv(here::here("data/young-people-drinking.csv"), 
                  col_types = "cdddddd")
 
-
-dados = read_csv(here::here("data/sat-gpa.csv"), 
-                 col_types = "dddd")
-
 binge = binge %>% 
     mutate(sexo = if_else(sexo == "1", "M", "F"))
 
-glimpse(dados)
 glimpse(binge)
 ```
 
@@ -154,16 +116,11 @@ binge %>%
 ```
 
 ```{r}
-
-total_linhas = binge %>% count()
-
-#total_linhas = length(binge$sexo);
-  
 binge %>% 
-    mutate(abusaram = if_else(mo_binge_n > 0, "Abusaram", "Não abusaram"), percentual = n()) %>% 
+    mutate(abusaram = if_else(mo_binge_n > 0, "Abusaram", "Não abusaram")) %>% 
     group_by(abusaram) %>% 
-    summarise(media = mean(k_unit_sum), n = n(), percentual = (n() / total_linhas$n) * 100, .groups = "drop")
-
+    summarise(media = mean(k_unit_sum), 
+              n = n())
 ```
 
 
@@ -195,5 +152,3 @@ estimado %>%
         x = "", y = "Diferença no Conhecimento") +
     coord_flip()
 ```
-
-
